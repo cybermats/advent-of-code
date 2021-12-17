@@ -1,8 +1,8 @@
-use std::env;
-use std::fs;
-use std::error::Error;
 use crate::common::aggregate;
 use crate::common::first::{epsilon, gamma};
+use std::env;
+use std::error::Error;
+use std::fs;
 
 pub struct Config {
     filename: String,
@@ -14,7 +14,10 @@ impl Config {
         args.next();
 
         match args.next() {
-            Some(filename) => Ok(Config { filename, first: true }),
+            Some(filename) => Ok(Config {
+                filename,
+                first: true,
+            }),
             None => Err("no arguments"),
         }
     }
@@ -28,20 +31,25 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     if config.first {
         let gamma = gamma(&counts);
         let epsilon = epsilon(&counts);
-        println!("Gamma: {}, Epsilon: {}, Power Consumption: {}", gamma, epsilon, gamma*epsilon);
+        println!(
+            "Gamma: {}, Epsilon: {}, Power Consumption: {}",
+            gamma,
+            epsilon,
+            gamma * epsilon
+        );
     }
 
     Ok(())
 }
 
 mod common {
-    #[derive(PartialEq)]
-    #[derive(Debug)]
+    use std::cmp::Ordering;
+
+    #[derive(PartialEq, Debug)]
     pub struct Readings<'a> {
         pub data: Vec<&'a str>,
         pub width: usize,
     }
-
 
     pub struct Counts {
         zeroes: Vec<u32>,
@@ -51,7 +59,11 @@ mod common {
 
     impl Counts {
         pub fn new(size: usize) -> Counts {
-            Counts { zeroes: vec![0; size], ones: vec![0; size], size }
+            Counts {
+                zeroes: vec![0; size],
+                ones: vec![0; size],
+                size,
+            }
         }
 
         pub fn read(&mut self, line: &str) -> () {
@@ -68,25 +80,24 @@ mod common {
             }
         }
 
-        pub fn most_common(&self, idx: usize) -> char {
-            if self.zeroes[idx] < self.ones[idx] {
-                '1'
-            } else {
-                '0'
+        pub fn most_common(&self, idx: usize, tie: char) -> char {
+            match self.zeroes[idx].cmp(&self.ones[idx]) {
+                Ordering::Less => '1',
+                Ordering::Equal => tie,
+                Ordering::Greater => '0',
             }
         }
-        pub fn least_common(&self, idx: usize) -> char {
-            if self.zeroes[idx] >= self.ones[idx] {
-                '1'
-            } else {
-                '0'
+        pub fn least_common(&self, idx: usize, tie: char) -> char {
+            match self.zeroes[idx].cmp(&self.ones[idx]) {
+                Ordering::Less => '0',
+                Ordering::Equal => tie,
+                Ordering::Greater => '1',
             }
         }
     }
 
     pub fn parse_data<'a>(content: &'a str) -> Result<Readings<'a>, &'static str> {
-        let data: Vec<&str> =
-            content.lines().collect();
+        let data: Vec<&str> = content.lines().collect();
 
         if data.is_empty() {
             return Err("Empty content");
@@ -106,6 +117,17 @@ mod common {
         Ok(counts)
     }
 
+    pub fn filter_bit<'a>(
+        data: &Vec<&'a str>,
+        position: usize,
+        filter_value: char,
+    ) -> Vec<&'a str> {
+        let i = data.iter();
+        let f = i.filter(|e| e.chars().nth(position).unwrap() == filter_value);
+        let c: Vec<&str> = f.cloned().collect();
+        c
+    }
+
     pub mod first {
         use crate::common::Counts;
 
@@ -113,7 +135,7 @@ mod common {
             let mut result: u32 = 0;
             for i in 0..counts.size {
                 result *= 2;
-                if counts.most_common(i) == '1' {
+                if counts.most_common(i, '1') == '1' {
                     result += 1;
                 }
             }
@@ -124,15 +146,60 @@ mod common {
             let mut result: u32 = 0;
             for i in 0..counts.size {
                 result *= 2;
-                if counts.least_common(i) == '1' {
+                if counts.least_common(i, '1') == '1' {
                     result += 1;
                 }
             }
             result
         }
     }
-}
 
+    pub mod second {
+        use crate::common::{filter_bit, Counts, Readings};
+
+        pub fn oxygen(readings: &Readings) -> u32 {
+            let mut data = readings.data.clone();
+            for pos in 0..readings.width {
+                let mut counts = Counts::new(readings.width);
+                data.iter().for_each(|d| counts.read(d));
+                data = filter_bit(&data, pos, counts.most_common(pos, '1'));
+                if data.len() == 1 {
+                    break;
+                }
+            }
+            let item = data[0];
+            let mut oxygen = 0;
+            for c in item.chars() {
+                oxygen *= 2;
+                if c == '1' {
+                    oxygen += 1;
+                }
+            }
+            oxygen
+        }
+
+        pub fn co2(readings: &Readings) -> u32 {
+            let mut data = readings.data.clone();
+            for pos in 0..readings.width {
+                let mut counts = Counts::new(readings.width);
+                data.iter().for_each(|d| counts.read(d));
+                data = filter_bit(&data, pos, counts.least_common(pos, '0'));
+                if data.len() == 1 {
+                    break;
+                }
+            }
+            let item = data[0];
+            let mut oxygen = 0;
+            for c in item.chars() {
+                oxygen *= 2;
+                if c == '1' {
+                    oxygen += 1;
+                }
+            }
+            oxygen
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -150,7 +217,10 @@ mod tests {
         let content = "\
 01
 010";
-        assert_eq!(common::parse_data(content), Err("Invalid format, multiple line sizes."));
+        assert_eq!(
+            common::parse_data(content),
+            Err("Invalid format, multiple line sizes.")
+        );
     }
 
     #[test]
@@ -158,7 +228,10 @@ mod tests {
         let content = "\
 01
 00";
-        let expected = common::Readings { data: vec!["01", "00"], width: 2 };
+        let expected = common::Readings {
+            data: vec!["01", "00"],
+            width: 2,
+        };
         assert_eq!(common::parse_data(content), Ok(expected));
     }
 
@@ -167,23 +240,10 @@ mod tests {
         let data = "01";
         let mut count = common::Counts::new(2);
         count.read(data);
-        assert_eq!(count.most_common(0), '0');
-        assert_eq!(count.least_common(0), '1');
-        assert_eq!(count.most_common(1), '1');
-        assert_eq!(count.least_common(1), '0');
-    }
-
-    #[test]
-    fn aggregate_lines() {
-        let data = vec!["001", "011"];
-        let mut count = common::Counts::new(3);
-        data.iter().for_each(|x| count.read(x));
-        assert_eq!(count.most_common(0), '0');
-        assert_eq!(count.least_common(0), '1');
-        assert_eq!(count.most_common(1), '0');
-        assert_eq!(count.least_common(1), '1');
-        assert_eq!(count.most_common(2), '1');
-        assert_eq!(count.least_common(2), '0');
+        assert_eq!(count.most_common(0, '0'), '0');
+        assert_eq!(count.least_common(0, '0'), '1');
+        assert_eq!(count.most_common(1, '0'), '1');
+        assert_eq!(count.least_common(1, '0'), '0');
     }
 
     #[test]
@@ -194,12 +254,20 @@ mod tests {
         let counts = common::aggregate(content);
         assert!(!counts.is_err());
         let counts = counts.unwrap();
-        assert_eq!(counts.most_common(0), '0');
-        assert_eq!(counts.least_common(0), '1');
-        assert_eq!(counts.most_common(1), '0');
-        assert_eq!(counts.least_common(1), '1');
-        assert_eq!(counts.most_common(2), '1');
-        assert_eq!(counts.least_common(2), '0');
+        assert_eq!(counts.most_common(0, '0'), '0');
+        assert_eq!(counts.least_common(0, '0'), '1');
+        assert_eq!(counts.most_common(0, '1'), '0');
+        assert_eq!(counts.least_common(0, '1'), '1');
+
+        assert_eq!(counts.most_common(1, '0'), '0');
+        assert_eq!(counts.least_common(1, '0'), '0');
+        assert_eq!(counts.most_common(1, '1'), '1');
+        assert_eq!(counts.least_common(1, '1'), '1');
+
+        assert_eq!(counts.most_common(2, '0'), '1');
+        assert_eq!(counts.least_common(2, '0'), '0');
+        assert_eq!(counts.most_common(2, '1'), '1');
+        assert_eq!(counts.least_common(2, '1'), '0');
     }
 
     #[test]
@@ -222,5 +290,42 @@ mod tests {
             let g = common::first::epsilon(&count);
             assert_eq!(g, idx as u32);
         }
+    }
+
+    #[test]
+    fn filter_bit_criteria() {
+        let data = vec!["11", "10", "01", "00"];
+        let filtered = common::filter_bit(&data, 0, '0');
+        assert_eq!(filtered, vec!["01", "00"]);
+        let filtered = common::filter_bit(&data, 0, '1');
+        assert_eq!(filtered, vec!["11", "10"]);
+        let filtered = common::filter_bit(&data, 1, '0');
+        assert_eq!(filtered, vec!["10", "00"]);
+        let filtered = common::filter_bit(&data, 1, '1');
+        assert_eq!(filtered, vec!["11", "01"]);
+    }
+
+    #[test]
+    fn oxygen_value() {
+        let data = vec![
+            "00100", "11110", "10110", "10111", "10101", "01111", "00111", "11100", "10000",
+            "11001", "00010", "01010",
+        ];
+        let readings = common::Readings { data, width: 5 };
+
+        let oxygen = common::second::oxygen(&readings);
+        assert_eq!(oxygen, 23);
+    }
+
+    #[test]
+    fn co2_value() {
+        let data = vec![
+            "00100", "11110", "10110", "10111", "10101", "01111", "00111", "11100", "10000",
+            "11001", "00010", "01010",
+        ];
+        let readings = common::Readings { data, width: 5 };
+
+        let co2 = common::second::co2(&readings);
+        assert_eq!(co2, 10);
     }
 }
