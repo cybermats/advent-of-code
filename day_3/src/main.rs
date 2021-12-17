@@ -6,12 +6,10 @@ fn main() {
         std::process::exit(1);
     });
 
-    config.first = true;
+    config.first = false;
 
     if let Err(e) = day_3::run(config) {
         eprintln!("Application error: {}", e);
         std::process::exit(1);
     }
-
-
 }

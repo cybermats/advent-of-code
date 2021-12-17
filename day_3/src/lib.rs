@@ -1,5 +1,6 @@
 use crate::common::aggregate;
 use crate::common::first::{epsilon, gamma};
+use crate::common::second::{co2, oxygen};
 use std::env;
 use std::error::Error;
 use std::fs;
@@ -36,6 +37,16 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
             gamma,
             epsilon,
             gamma * epsilon
+        );
+    } else {
+        let readings = common::parse_data(&content)?;
+        let oxygen = oxygen(&readings);
+        let co2 = co2(&readings);
+        println!(
+            "Oxygen: {}, CO2: {}, Life support: {}",
+            oxygen,
+            co2,
+            oxygen * co2
         );
     }
 
@@ -80,17 +91,17 @@ mod common {
             }
         }
 
-        pub fn most_common(&self, idx: usize, tie: char) -> char {
+        pub fn most_common(&self, idx: usize) -> char {
             match self.zeroes[idx].cmp(&self.ones[idx]) {
                 Ordering::Less => '1',
-                Ordering::Equal => tie,
+                Ordering::Equal => '1',
                 Ordering::Greater => '0',
             }
         }
-        pub fn least_common(&self, idx: usize, tie: char) -> char {
+        pub fn least_common(&self, idx: usize) -> char {
             match self.zeroes[idx].cmp(&self.ones[idx]) {
                 Ordering::Less => '0',
-                Ordering::Equal => tie,
+                Ordering::Equal => '0',
                 Ordering::Greater => '1',
             }
         }
@@ -135,7 +146,7 @@ mod common {
             let mut result: u32 = 0;
             for i in 0..counts.size {
                 result *= 2;
-                if counts.most_common(i, '1') == '1' {
+                if counts.most_common(i) == '1' {
                     result += 1;
                 }
             }
@@ -146,7 +157,7 @@ mod common {
             let mut result: u32 = 0;
             for i in 0..counts.size {
                 result *= 2;
-                if counts.least_common(i, '1') == '1' {
+                if counts.least_common(i) == '1' {
                     result += 1;
                 }
             }
@@ -162,7 +173,7 @@ mod common {
             for pos in 0..readings.width {
                 let mut counts = Counts::new(readings.width);
                 data.iter().for_each(|d| counts.read(d));
-                data = filter_bit(&data, pos, counts.most_common(pos, '1'));
+                data = filter_bit(&data, pos, counts.most_common(pos));
                 if data.len() == 1 {
                     break;
                 }
@@ -183,7 +194,7 @@ mod common {
             for pos in 0..readings.width {
                 let mut counts = Counts::new(readings.width);
                 data.iter().for_each(|d| counts.read(d));
-                data = filter_bit(&data, pos, counts.least_common(pos, '0'));
+                data = filter_bit(&data, pos, counts.least_common(pos));
                 if data.len() == 1 {
                     break;
                 }
@@ -240,10 +251,10 @@ mod tests {
         let data = "01";
         let mut count = common::Counts::new(2);
         count.read(data);
-        assert_eq!(count.most_common(0, '0'), '0');
-        assert_eq!(count.least_common(0, '0'), '1');
-        assert_eq!(count.most_common(1, '0'), '1');
-        assert_eq!(count.least_common(1, '0'), '0');
+        assert_eq!(count.most_common(0), '0');
+        assert_eq!(count.least_common(0), '1');
+        assert_eq!(count.most_common(1), '1');
+        assert_eq!(count.least_common(1), '0');
     }
 
     #[test]
@@ -254,20 +265,14 @@ mod tests {
         let counts = common::aggregate(content);
         assert!(!counts.is_err());
         let counts = counts.unwrap();
-        assert_eq!(counts.most_common(0, '0'), '0');
-        assert_eq!(counts.least_common(0, '0'), '1');
-        assert_eq!(counts.most_common(0, '1'), '0');
-        assert_eq!(counts.least_common(0, '1'), '1');
+        assert_eq!(counts.most_common(0), '0');
+        assert_eq!(counts.least_common(0), '1');
 
-        assert_eq!(counts.most_common(1, '0'), '0');
-        assert_eq!(counts.least_common(1, '0'), '0');
-        assert_eq!(counts.most_common(1, '1'), '1');
-        assert_eq!(counts.least_common(1, '1'), '1');
+        assert_eq!(counts.most_common(1), '1');
+        assert_eq!(counts.least_common(1), '0');
 
-        assert_eq!(counts.most_common(2, '0'), '1');
-        assert_eq!(counts.least_common(2, '0'), '0');
-        assert_eq!(counts.most_common(2, '1'), '1');
-        assert_eq!(counts.least_common(2, '1'), '0');
+        assert_eq!(counts.most_common(2), '1');
+        assert_eq!(counts.least_common(2), '0');
     }
 
     #[test]
