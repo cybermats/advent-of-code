@@ -1,11 +1,12 @@
 use regex::Regex;
+use std::cmp::Ordering;
 use std::error::Error;
 use std::{cmp, fs};
 
-pub fn run(filename: &str) -> Result<(), Box<dyn Error>> {
+pub fn run(filename: &str, part2: bool) -> Result<(), Box<dyn Error>> {
     let content = fs::read_to_string(filename)?;
     let vent_lines = parse_vents(content);
-    let diagram = produce_field(vent_lines);
+    let diagram = produce_field(vent_lines, part2);
     println!("Points: {}", diagram.point());
     Ok(())
 }
@@ -108,10 +109,28 @@ impl Field {
         let smallest_x = cmp::min(vent.a.x, vent.b.x) as usize;
         let smallest_y = cmp::min(vent.a.y, vent.b.y) as usize;
 
-        for row in smallest_y..largest_y {
-            for col in smallest_x..largest_x {
-                self.field[row].add(col);
-            }
+        let length_x = largest_x - smallest_x;
+        let length_y = largest_y - smallest_y;
+        let length = cmp::max(length_x, length_y);
+
+        let inc_x: i32 = match vent.a.x.cmp(&vent.b.x) {
+            Ordering::Less => 1,
+            Ordering::Equal => 0,
+            Ordering::Greater => -1,
+        };
+        let inc_y: i32 = match vent.a.y.cmp(&vent.b.y) {
+            Ordering::Less => 1,
+            Ordering::Equal => 0,
+            Ordering::Greater => -1,
+        };
+
+        let mut x = vent.a.x;
+        let mut y = vent.a.y;
+
+        for _ in 0..length {
+            self.field[y as usize].add(x as usize);
+            x += inc_x;
+            y += inc_y;
         }
     }
 
@@ -120,9 +139,11 @@ impl Field {
     }
 }
 
-fn produce_field(vents: Vec<Vent>) -> Field {
+fn produce_field(vents: Vec<Vent>, part2: bool) -> Field {
     let mut field = Field::new();
-    let vents = vents.iter().filter(|v| v.a.x == v.b.x || v.a.y == v.b.y);
+    let vents = vents
+        .iter()
+        .filter(|v| part2 || v.a.x == v.b.x || v.a.y == v.b.y);
     for vent in vents {
         field.add(&vent);
     }

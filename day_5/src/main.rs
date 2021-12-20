@@ -4,10 +4,11 @@ fn main() {
         None => {
             eprintln!("usage: day_5 FILE");
             std::process::exit(1);
-        },
-        Some(val) => val
+        }
+        Some(val) => val,
     };
-    if let Err(err) = day_5::run(&filename) {
+    let part2 = true;
+    if let Err(err) = day_5::run(&filename, part2) {
         eprintln!("application error: {}", err);
         std::process::exit(1);
     }
