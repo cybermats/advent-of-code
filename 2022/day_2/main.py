@@ -16,7 +16,6 @@ def winner(me, other):
     return -1
 
 def convertOther(other):
-    other = other.strip()
     if other == 'A':
         return ROCK
     if other == 'B':
@@ -26,14 +25,23 @@ def convertOther(other):
     raise RuntimeError("Unknown other type")
 
 
-def convertOwn(me):
-    me = me.strip()
-    if me == 'X':
-        return ROCK
-    if me == 'Y':
-        return PAPER
-    if me == 'Z':
-        return SCISSOR
+def convertOwn(me_sign, other):
+    if me_sign == 'X': # I need to lose
+        if other == ROCK:
+            return SCISSOR
+        if other == PAPER:
+            return ROCK
+        if other == SCISSOR:
+            return PAPER
+    if me_sign == 'Y': # I need to draw
+        return other
+    if me_sign == 'Z': # I need to win
+        if other == ROCK:
+            return PAPER
+        if other == PAPER:
+            return SCISSOR
+        if other == SCISSOR:
+            return ROCK
     raise RuntimeError("Unknown me type: " + me)
 
 def roundScore(me):
@@ -52,10 +60,10 @@ def totalScore(me, other):
 
 def lineScore(line: str):
     items = line.split(" ")
-    meSign = items[1]
-    otherSign = items[0]
-    me = convertOwn(meSign)
-    other = convertOther(otherSign)
+    me_sign = items[1].strip()
+    other_sign = items[0].strip()
+    other = convertOther(other_sign)
+    me = convertOwn(me_sign, other)
     return totalScore(me, other)
 
 
