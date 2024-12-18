@@ -50,18 +50,37 @@ public class Main {
 
         var sum = Streams
                 .zip(leftList.stream(), rightList.stream(), (left, right) -> Math.abs(left - right))
-                .collect(Collectors.summarizingInt(Integer::intValue));
-        System.out.println("Sum is: " + sum.getSum());
+                .collect(Collectors.summingInt(Integer::intValue));
+        System.out.println("Sum is: " + sum);
+
+    }
+
+    private static void processListsPart2(List<Integer> leftList, List<Integer> rightList) {
+        assert leftList.size() == rightList.size();
+
+        var map = rightList.stream().collect(Collectors.groupingBy(Integer::intValue))
+                .entrySet().stream()
+                .collect(Collectors.toMap(
+                        e -> e.getKey(),
+                        e -> e.getValue().size()));
+
+        var value = leftList.stream()
+                .map(i -> i * map.getOrDefault(i, 0))
+                .collect(Collectors.summingInt(Integer::intValue));
+
+        System.out.println("Similarity score is: " + value);
 
     }
 
     public static void main(String[] args) {
         String file = "src/main/resources/aoc_day1input.txt";
+//        String file = "src/main/resources/test.txt";
         try {
             var leftList = new ArrayList<Integer>();
             var rightList = new ArrayList<Integer>();
             readFile(file, leftList, rightList);
             processListsPart1(leftList, rightList);
+            processListsPart2(leftList, rightList);
         } catch (Exception e) {
             System.err.println(e.getMessage());
             e.printStackTrace();
