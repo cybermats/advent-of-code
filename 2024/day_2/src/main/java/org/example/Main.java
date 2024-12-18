@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.google.common.collect.Streams;
 
@@ -33,6 +34,9 @@ public class Main {
             }
             current = tokenizer.nextToken();
         }
+
+        if (reports.getLast().isEmpty())
+            reports.removeLast();
 
         if (reports.size() > 50)
             return;
@@ -68,9 +72,54 @@ public class Main {
         }
 
         var count = reports.stream().filter(Main::isReportSafe).count();
-        System.out.println("Safe reports: " + count);
+        System.out.println("- Safe reports: " + count);
     }
 
+    private static boolean isReportSafe2(List<Integer> report) {
+        if (isReportSafe2Helper(report))
+            return true;
+        for(int i = 0; i < report.size(); i++) {
+            var newList = new ArrayList<>(report);
+            newList.remove(i);
+            if (isReportSafe2Helper(newList))
+                return true;
+        }
+        return false;
+    }
+    private static boolean isReportSafe2Helper(List<Integer> report) {
+        if (report.size() < 2)
+            return false;
+
+        var direction = report.get(0).compareTo(report.get(1));
+        if (direction == 0)
+            return false;
+
+        for (int next = 1; next < report.size(); next++) {
+            var prev = next - 1;
+            var newDirection = report.get(prev).compareTo(report.get(next));
+            if (newDirection != direction)
+                return false;
+
+            var diff = Math.abs(report.get(prev) - report.get(next));
+            if (diff == 0 || diff > 3) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+
+
+    public static void processReports2(List<List<Integer>> reports) {
+        if (reports.size() < 50) {
+            reports.stream()
+                    .map(r -> isReportSafe2(r) ? "Safe": "Unsafe")
+                    .forEach(System.out::println);
+        }
+
+        var count = reports.stream().filter(Main::isReportSafe2).count();
+        System.out.println("- Safe reports: " + count);
+    }
 
     public static void main(String[] args) {
         String file = "src/main/resources/input";
@@ -78,7 +127,10 @@ public class Main {
         try {
             var reports = new ArrayList<List<Integer>>();
             readFile(file, reports);
+            System.out.println("\n *** First report");
             processReports1(reports);
+            System.out.println("\n *** Second report");
+            processReports2(reports);
         } catch (Exception e) {
             System.err.println(e.getMessage());
             e.printStackTrace();
