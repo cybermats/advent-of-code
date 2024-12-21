@@ -8,7 +8,7 @@ import java.util.stream.Collectors;
 public class Main {
 
     private static String readFile(String fileName) throws IOException {
-        return Files.readAllLines(Path.of(fileName)).stream().collect(Collectors.joining());
+        return String.join("", Files.readAllLines(Path.of(fileName)));
     }
 
 
