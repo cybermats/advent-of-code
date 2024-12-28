@@ -9,6 +9,29 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 public class Main {
+    private static class Day5Comparator implements Comparator<Integer> {
+        private final Map<Integer, Set<Integer>> _lessThan;
+
+        public Day5Comparator(Map<Integer, Set<Integer>> lessThan) {
+            _lessThan = lessThan;
+        }
+
+
+        @Override
+        public int compare(Integer o1, Integer o2) {
+            if (o1.equals(o2))
+                return 0;
+            var ruleA = _lessThan.get(o1);
+            if (ruleA != null && ruleA.contains(o2))
+                return -1;
+            var ruleB = _lessThan.get(o2);
+            if (ruleB != null && ruleB.contains(o1))
+                return 1;
+            return 0;
+        }
+    }
+
+
 
     private static void readFile(String fileName, Map<Integer, Set<Integer>> rules, List<List<Integer>> updates) throws Exception {
         var lines = Files.readAllLines(Path.of(fileName));
@@ -71,6 +94,32 @@ public class Main {
                 .toList();
     }
 
+    private static List<List<Integer>> findUnPrintableUpdates(Map<Integer, Set<Integer>> rules, List<List<Integer>> updates) {
+        return
+                updates.stream()
+                        .filter(update -> !processUpdate(rules, update))
+                        .toList();
+    }
+
+    private static record Link(Integer head, Optional<Link> tail){}
+
+    private static List<Integer> reorderUpdate(Map<Integer, Set<Integer>> rules, List<Integer> update) throws Exception {
+        var comparator = new Day5Comparator(rules);
+        var result = new ArrayList<>(update);
+        result.sort(comparator);
+        return result;
+    }
+
+    private static List<List<Integer>> reorderAllUpdates(Map<Integer, Set<Integer>> rules, List<List<Integer>> updates) throws Exception {
+        var result = new ArrayList<List<Integer>>();
+        for (var update: updates) {
+            var ordered = reorderUpdate(rules, update);
+            result.add(ordered);
+        }
+        return result;
+    }
+
+
     public static void main(String[] args) {
         String file = "src/main/resources/input";
 //        String file = "src/main/resources/test.txt";
@@ -80,12 +129,17 @@ public class Main {
             readFile(file, rules, updates);
             System.out.println("Rules: " + rules);
             System.out.println("Updates: " + updates);
-            var printableUpdates = findPrintableUpdates(rules, updates);
-            System.out.println("Printable Updates: " + printableUpdates);
-            var middlePageNumbers = findMiddlePageNumbers(printableUpdates);
-            System.out.println("Middle Page Numbers: " + middlePageNumbers);
+
+            var unprintableUpdates = findUnPrintableUpdates(rules, updates);
+            System.out.println("Unprintable updates: " + unprintableUpdates);
+            var reorderUpdates = reorderAllUpdates(rules, unprintableUpdates);
+            System.out.println("Reorder updates: " + reorderUpdates);
+
+            var middlePageNumbers = findMiddlePageNumbers(reorderUpdates);
+            System.out.println("Middle page numbers: " + middlePageNumbers);
             var sum = middlePageNumbers.stream().mapToInt(Integer::intValue).sum();
-            System.out.println("Sum of Middle Page Numbers: " + sum);
+            System.out.println("Sum: " + sum);
+
 
         } catch (Exception e) {
             System.err.println(e.getMessage());
